@@ -1,0 +1,30 @@
+# Gridiron Intel Sentiment Service
+# Python dependencies for Railway deployment
+
+# Web Framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+httpx==0.26.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# NLP / ML
+vaderSentiment==3.3.2
+transformers==4.37.2
+torch==2.1.2
+sentencepiece==0.1.99
+
+# Data Processing
+rapidfuzz==3.6.1
+
+# Reddit (RSS only - no API needed)
+feedparser==6.0.10
+
+# Google Trends
+pytrends==4.9.2
+
+# Utilities
+python-dotenv==1.0.0
+pydantic==2.5.3
