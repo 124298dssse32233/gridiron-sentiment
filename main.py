@@ -1,4 +1,4 @@
-h"""
+"""
 Gridiron Intel Sentiment Service
 =================================
 
