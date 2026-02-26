@@ -228,7 +228,7 @@ class NewsCollector:
                 url=link,
                 createdAt=created_at,
                 collectedAt=datetime.utcnow(),
-                metadata={
+                extra_data={
                     "source": article_data.get("source"),
                     "feed": article_data.get("feed_name"),
                     "title": title,

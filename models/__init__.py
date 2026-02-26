@@ -64,7 +64,7 @@ class SentimentRaw(Base):
     url = Column(String, nullable=True)
     createdAt = Column(DateTime, nullable=True)
     collectedAt = Column(DateTime, default=datetime.utcnow, nullable=False)
-    metadata = Column(JSONB, nullable=True)
+    extra_data = Column("metadata", JSONB, nullable=True)
     processed = Column(Boolean, default=False, nullable=False)
 
 

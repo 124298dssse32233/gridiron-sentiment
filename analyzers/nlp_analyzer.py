@@ -108,8 +108,8 @@ class NLPAnalyzer:
                     result = await self._analyze_text(raw.content)
 
                     # Update raw entry with sentiment results
-                    raw.metadata = raw.metadata or {}
-                    raw.metadata.update({
+                    raw.extra_data = raw.extra_data or {}
+                    raw.extra_data.update({
                         "sentiment": {
                             "score": result.score,
                             "vader": result.vader_compound,

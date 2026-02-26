@@ -227,7 +227,7 @@ class RedditCollector:
                 url=post_url,
                 createdAt=created_at,
                 collectedAt=datetime.utcnow(),
-                metadata={
+                extra_data={
                     "subreddit": post_data.get("subreddit"),
                     "score": post_data.get("score", 0),
                     "numComments": post_data.get("num_comments", 0),

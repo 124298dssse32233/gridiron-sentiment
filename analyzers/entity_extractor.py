@@ -281,7 +281,7 @@ class EntityExtractor:
                 mentions = self.team_index.find_teams(raw.content)
 
                 # Get sentiment score
-                sentiment = raw.metadata.get("sentiment", {}) if raw.metadata else {}
+                sentiment = raw.extra_data.get("sentiment", {}) if raw.extra_data else {}
                 score = sentiment.get("score", 50)  # Default to neutral
 
                 for mention in mentions:
@@ -415,7 +415,7 @@ class EntityExtractor:
                                 full_name = f"{word} {words[i + 1]}"
 
                                 # Get sentiment
-                                sentiment = raw.metadata.get("sentiment", {}) if raw.metadata else {}
+                                sentiment = raw.extra_data.get("sentiment", {}) if raw.extra_data else {}
                                 score = sentiment.get("score", 50)
 
                                 player_mentions[full_name]["scores"].append(score)

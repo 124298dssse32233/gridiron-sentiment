@@ -221,7 +221,7 @@ class BlueskyCollector:
                 url=post_url,
                 createdAt=datetime.fromisoformat(created_at.replace("Z", "+00:00")) if created_at else datetime.utcnow(),
                 collectedAt=datetime.utcnow(),
-                metadata={
+                extra_data={
                     "cid": cid,
                     "replyCount": post.get("replyCount", 0),
                     "repostCount": post.get("repostCount", 0),
