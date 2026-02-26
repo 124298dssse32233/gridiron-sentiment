@@ -23,7 +23,7 @@ import httpx
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, String, DateTime, Integer, Text, Boolean
 
-from ..models import SentimentRaw
+from models import SentimentRaw
 
 logger = logging.getLogger(__name__)
 

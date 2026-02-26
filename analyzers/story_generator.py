@@ -100,7 +100,7 @@ class StoryGenerator:
 
         try:
             # Get season record
-            from ..models import Season
+            from models import Season
             season_rec = self.db.query(Season).filter_by(year=season).first()
 
             if not season_rec:
@@ -145,7 +145,7 @@ class StoryGenerator:
     ) -> Optional[Dict]:
         """Generate story about team with rising sentiment"""
         try:
-            from ..models import TeamSentiment, Team
+            from models import TeamSentiment, Team
 
             # Get team with highest positive sentiment this week
             result = self.db.query(TeamSentiment, Team).join(
@@ -212,7 +212,7 @@ class StoryGenerator:
     ) -> Optional[Dict]:
         """Generate story about team with falling sentiment"""
         try:
-            from ..models import TeamSentiment, Team
+            from models import TeamSentiment, Team
 
             # Get team with lowest sentiment this week
             result = self.db.query(TeamSentiment, Team).join(
@@ -278,7 +278,7 @@ class StoryGenerator:
     ) -> Optional[Dict]:
         """Generate story about controversial team (high buzz, low sentiment)"""
         try:
-            from ..models import TeamSentiment, Team
+            from models import TeamSentiment, Team
 
             # Get team with highest buzz volume but low sentiment (<50)
             result = self.db.query(TeamSentiment, Team).join(
@@ -334,7 +334,7 @@ class StoryGenerator:
     ) -> Optional[Dict]:
         """Generate story about viral player"""
         try:
-            from ..models import PlayerSentiment, Team
+            from models import PlayerSentiment, Team
 
             # Get player with highest buzz score
             result = self.db.query(PlayerSentiment, Team).join(
@@ -432,7 +432,7 @@ class StoryGenerator:
     ):
         """Store generated story in database"""
         try:
-            from ..models import SentimentStory
+            from models import SentimentStory
 
             # Check for existing story
             existing = self.db.query(SentimentStory).filter(

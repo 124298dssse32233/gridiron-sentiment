@@ -22,7 +22,7 @@ import httpx
 import feedparser
 from sqlalchemy.orm import Session
 
-from ..models import SentimentRaw
+from models import SentimentRaw
 
 logger = logging.getLogger(__name__)
 
@@ -192,7 +192,7 @@ class RedditCollector:
                 return False
 
             # Check for duplicates
-            from ..models import SentimentRaw
+            from models import SentimentRaw
             existing = self.db.query(SentimentRaw).filter_by(
                 source="reddit",
                 sourceId=reddit_id

@@ -52,7 +52,7 @@ class TeamEntityIndex:
     def _build_index(self):
         """Build the team entity index from database"""
         try:
-            from ..models import Team
+            from models import Team
 
             teams = self.db.query(Team).all()
 
@@ -215,7 +215,7 @@ class PlayerEntityIndex:
     def _build_index(self):
         """Build player index from existing mentions"""
         try:
-            from ..models import PlayerSentiment
+            from models import PlayerSentiment
 
             players = self.db.query(PlayerSentiment).all()
 
@@ -255,7 +255,7 @@ class EntityExtractor:
             self.player_index = PlayerEntityIndex(self.db)
 
             # Get current season
-            from ..models import Season
+            from models import Season
             season_rec = self.db.query(Season).order_by(Season.year.desc()).first()
 
             if not season_rec:
@@ -263,7 +263,7 @@ class EntityExtractor:
                 return 0
 
             # Get processed raw sentiment with sentiment scores
-            from ..models import SentimentRaw
+            from models import SentimentRaw
             raw_entries = self.db.query(SentimentRaw).filter(
                 SentimentRaw.processed == True,
                 SentimentRaw.createdAt >= datetime.utcnow() - timedelta(days=7)
@@ -320,7 +320,7 @@ class EntityExtractor:
                 divergence = abs(media_avg - fan_avg)
 
                 # Create or update TeamSentiment
-                from ..models import TeamSentiment
+                from models import TeamSentiment
                 existing = self.db.query(TeamSentiment).filter(
                     TeamSentiment.teamId == team_id,
                     TeamSentiment.seasonId == season_rec.id
@@ -368,7 +368,7 @@ class EntityExtractor:
 
         try:
             # Get current season
-            from ..models import Season, SentimentRaw, PlayerSentiment
+            from models import Season, SentimentRaw, PlayerSentiment
             season_rec = self.db.query(Season).order_by(Season.year.desc()).first()
 
             if not season_rec:

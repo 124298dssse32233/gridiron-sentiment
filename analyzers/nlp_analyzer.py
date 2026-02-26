@@ -90,7 +90,7 @@ class NLPAnalyzer:
         count = 0
 
         try:
-            from ..models import SentimentRaw
+            from models import SentimentRaw
 
             # Get unprocessed posts
             unprocessed = self.db.query(SentimentRaw).filter_by(
@@ -275,7 +275,7 @@ class NLPAnalyzer:
         Returns dict mapping team_id to composite score.
         """
         try:
-            from ..models import SentimentRaw, Team
+            from models import SentimentRaw, Team
 
             # Get all processed raw sentiment
             all_raw = self.db.query(SentimentRaw).filter(

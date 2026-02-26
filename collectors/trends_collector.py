@@ -18,7 +18,7 @@ from typing import Optional, List, Dict, Any
 from pytrends.request import TrendReq
 from sqlalchemy.orm import Session
 
-from ..models import TeamBuzz
+from models import TeamBuzz
 
 logger = logging.getLogger(__name__)
 
@@ -148,7 +148,7 @@ class TrendsCollector:
             )
 
             # Get current season record
-            from ..models import Season
+            from models import Season
             season_rec = self.db.query(Season).filter_by(year=season).first()
 
             if not season_rec:
@@ -156,7 +156,7 @@ class TrendsCollector:
                 return 0
 
             # Get all teams
-            from ..models import Team
+            from models import Team
             teams = self.db.query(Team).all()
 
             # Process in batches
@@ -257,7 +257,7 @@ class TrendsCollector:
     ):
         """Store buzz data in the database"""
         try:
-            from ..models import TeamBuzz
+            from models import TeamBuzz
 
             # Check for existing entry
             existing = self.db.query(TeamBuzz).filter(
