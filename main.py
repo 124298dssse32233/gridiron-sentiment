@@ -306,6 +306,10 @@ async def startup_event():
 
     if DATABASE_URL and engine:
         try:
+            # Create all tables if they don't exist
+            Base.metadata.create_all(engine)
+            logger.info("Database tables created/verified")
+
             # Test database connection
             with engine.connect() as conn:
                 conn.execute("SELECT 1")
