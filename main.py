@@ -382,7 +382,7 @@ async def create_mock_data():
 
             # Get team IDs for popular teams
             teams_result = db.execute(
-                text("SELECT id, abbreviation FROM team WHERE abbreviation IN ('ALA', 'UGA', 'OSU', 'MICH', 'TEX', 'FSU')")
+                text("SELECT id, abbreviation FROM "Team" WHERE abbreviation IN ('ALA', 'UGA', 'OSU', 'MICH', 'TEX', 'FSU')")
             )
             teams = teams_result.fetchall()
 
@@ -391,9 +391,9 @@ async def create_mock_data():
                 # Check if sentiment already exists for this team today
                 existing = db.execute(
                     text("""
-                        SELECT id FROM team_sentiment
-                        WHERE teamId = :team_id
-                        AND measuredAt > NOW() - INTERVAL '1 hour'
+                        SELECT id FROM "TeamSentiment"
+                        WHERE "teamId" = :team_id
+                        AND "measuredAt" > NOW() - INTERVAL '1 hour'
                         LIMIT 1
                     """),
                     {"team_id": team_id}
@@ -412,9 +412,9 @@ async def create_mock_data():
 
                 db.execute(
                     text("""
-                        INSERT INTO team_sentiment
-                        (teamId, seasonId, measuredAt, score, trend, buzzVolume,
-                         blueskyScore, redditScore, newsScore, hotTopics, sourceBreakdown)
+                        INSERT INTO "TeamSentiment"
+                        ("teamId", "seasonId", "measuredAt", score, trend, "buzzVolume",
+                         "blueskyScore", "redditScore", "newsScore", "hotTopics", "sourceBreakdown")
                         VALUES
                         (:team_id, :season_id, NOW(), :score, :trend, :buzz_volume,
                          :bluesky_score, :reddit_score, :news_score,
