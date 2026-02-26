@@ -128,49 +128,71 @@ class BlueskyCollector:
         Collect using the Bluesky relay service (HTTP-based).
 
         The bsky.social relay provides recent posts over HTTP.
+
+        Optimized for Railway's 60s timeout with parallel processing.
         """
         count = 0
+        # Use only 5 keywords for quick collection - adjust as needed
+        keywords = list(CFB_KEYWORDS)[:5]
 
         try:
-            # Search for CFB-related posts using the search API
-            async with httpx.AsyncClient(timeout=30.0) as client:
-                # Search for each keyword and collect results
-                for keyword in list(CFB_KEYWORDS)[:20]:  # Limit for rate limits
-                    try:
-                        response = await client.get(
-                            "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts",
-                            params={
-                                "q": keyword,
-                                "limit": 25,
-                                "sort": "latest"
-                            },
-                            headers={
-                                "User-Agent": "GridironIntel-Sentiment/1.0"
-                            }
-                        )
+            # Create a single client with shorter timeout
+            timeout = httpx.Timeout(10.0, connect=5.0)
+            async with httpx.AsyncClient(timeout=timeout) as client:
+                # Process keywords in parallel batches
+                batch_size = 3
+                for i in range(0, len(keywords), batch_size):
+                    batch = keywords[i:i + batch_size]
+                    results = await asyncio.gather(
+                        *[self._fetch_keyword_posts(client, keyword, season, week) for keyword in batch],
+                        return_exceptions=True
+                    )
 
-                        if response.status_code == 200:
-                            data = response.json()
-                            posts = data.get("posts", [])
+                    for result in results:
+                        if isinstance(result, Exception):
+                            logger.warning(f"Keyword fetch failed: {result}")
+                        elif result:
+                            count += result
 
-                            for post in posts:
-                                if await self._store_post(post, season, week):
-                                    count += 1
+                    logger.info(f"Batch {i//batch_size + 1} complete: {count} posts collected")
 
-                        # Rate limiting
-                        await asyncio.sleep(0.1)
-
-                    except httpx.HTTPStatusError as e:
-                        if e.response.status_code == 429 or e.response.status_code == 429:
-                            logger.warning(f"Rate limited on Bluesky API, waiting...")
-                            await asyncio.sleep(5)
-                        else:
-                            logger.error(f"HTTP error: {e}")
-
+        except asyncio.TimeoutError:
+            logger.warning("Bluesky collection timed out - returning partial results")
         except Exception as e:
             logger.error(f"Error in relay collection: {e}", exc_info=True)
 
         logger.info(f"Collected {count} posts from Bluesky")
+        return count
+
+    async def _fetch_keyword_posts(self, client: httpx.AsyncClient, keyword: str, season: int, week: Optional[int]) -> int:
+        """Fetch posts for a single keyword."""
+        count = 0
+        try:
+            response = await client.get(
+                "https://api.bsky.app/xrpc/app.bsky.feed.searchPosts",
+                params={
+                    "q": keyword,
+                    "limit": 10,  # Reduced from 25
+                    "sort": "latest"
+                },
+                headers={
+                    "User-Agent": "GridironIntel-Sentiment/1.0"
+                }
+            )
+
+            if response.status_code == 200:
+                data = response.json()
+                posts = data.get("posts", [])
+
+                for post in posts:
+                    if await self._store_post(post, season, week):
+                        count += 1
+            elif response.status_code == 429:
+                logger.warning(f"Rate limited for keyword '{keyword}'")
+
+        except Exception as e:
+            logger.debug(f"Error fetching posts for '{keyword}': {e}")
+
         return count
 
     async def _store_post(self, post: Dict[str, Any], season: int, week: Optional[int]) -> bool:

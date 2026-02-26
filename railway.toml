@@ -1,3 +1,6 @@
+# Railway Configuration for Gridiron Intel Sentiment Service
+# https://railway.app/reference
+
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
@@ -12,3 +15,21 @@ restartPolicyMaxRetries = 10
 [[services]]
 name = "Sentiment Service"
 serviceType = "web"
+
+# Cron Jobs - Automatic Sentiment Processing
+# ===========================================
+# Process sentiment every 6 hours during football season
+[[cron]]
+id = "sentiment-process-6h"
+schedule = "0 */6 * * * *"  # Every 6 hours
+command = "curl -X POST http://localhost:8000/cron/process"
+description = "Process sentiment data every 6 hours"
+timezone = "UTC"
+
+# Optional: Mock data refresh for testing (Sundays at 3 AM)
+[[cron]]
+id = "sentiment-mock-weekly"
+schedule = "0 3 * * 0"  # Sundays at 3 AM UTC
+command = "curl -X POST http://localhost:8000/mock"
+description = "Refresh mock sentiment data (testing)"
+timezone = "UTC"

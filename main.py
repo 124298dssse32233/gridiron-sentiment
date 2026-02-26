@@ -178,33 +178,40 @@ async def process_sentiment_pipeline(
     pipeline_start = time.monotonic()
 
     try:
-        # Step 1: Collect data
+        # Step 1: Collect data with timeouts
         for source in sources:
             try:
+                # Add timeout wrapper for each collector
+                collect_task = None
+
                 if source == "bluesky":
                     from collectors.bluesky_collector import BlueskyCollector
                     collector = BlueskyCollector(db)
-                    count = await collector.collect(season, week)
-                    stats["bluesky_collected"] = count
+                    collect_task = asyncio.create_task(collector.collect(season, week))
 
                 elif source == "reddit":
                     from collectors.reddit_collector import RedditCollector
                     collector = RedditCollector(db)
-                    count = await collector.collect(season, week)
-                    stats["reddit_collected"] = count
+                    collect_task = asyncio.create_task(collector.collect(season, week))
 
                 elif source == "news":
                     from collectors.news_collector import NewsCollector
                     collector = NewsCollector(db)
-                    count = await collector.collect(season, week)
-                    stats["news_collected"] = count
+                    collect_task = asyncio.create_task(collector.collect(season, week))
 
                 elif source == "trends":
                     from collectors.trends_collector import TrendsCollector
                     collector = TrendsCollector(db)
-                    count = await collector.collect(season, week)
-                    stats["trends_collected"] = count
+                    collect_task = asyncio.create_task(collector.collect(season, week))
 
+                if collect_task:
+                    # 45 second timeout per collector
+                    count = await asyncio.wait_for(collect_task, timeout=45.0)
+                    stats[f"{source}_collected"] = count
+
+            except asyncio.TimeoutError:
+                logger.warning(f"Collector '{source}' timed out after 45s")
+                stats[f"{source}_error"] = "timeout"
             except Exception as e:
                 logger.error(f"Collector '{source}' failed: {e}", exc_info=True)
                 stats[f"{source}_error"] = str(e)
