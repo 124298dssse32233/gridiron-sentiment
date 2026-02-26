@@ -1,4 +1,4 @@
-"""
+h"""
 Gridiron Intel Sentiment Service
 =================================
 
@@ -374,7 +374,7 @@ async def create_mock_data():
 
         with get_db() as db:
             # Get season ID for 2024
-            season_result = db.execute(text("SELECT id FROM season WHERE year = 2024 LIMIT 1"))
+            season_result = db.execute(text("SELECT id FROM "Season" WHERE year = 2024 LIMIT 1"))
             season_row = season_result.fetchone()
             if not season_row:
                 return {"success": False, "message": "Season 2024 not found"}
