@@ -347,6 +347,97 @@ async def get_stats():
 
 
 # ============================================================================
+# Mock Data Endpoint (for testing)
+# ============================================================================
+
+@app.post("/mock")
+async def create_mock_data():
+    """
+    Create mock sentiment data for testing.
+
+    This endpoint creates sample sentiment data for a few popular teams
+    to verify the pipeline works without calling external APIs.
+    """
+    if not SessionLocal:
+        return {"success": False, "message": "Database not configured"}
+
+    try:
+        import random
+        from sqlalchemy import text
+
+        with get_db() as db:
+            # Get season ID for 2024
+            season_result = db.execute(text("SELECT id FROM season WHERE year = 2024 LIMIT 1"))
+            season_row = season_result.fetchone()
+            if not season_row:
+                return {"success": False, "message": "Season 2024 not found"}
+            season_id = season_row[0]
+
+            # Get team IDs for popular teams
+            teams_result = db.execute(
+                text("SELECT id, abbreviation FROM team WHERE abbreviation IN ('ALA', 'UGA', 'OSU', 'MICH', 'TEX', 'FSU')")
+            )
+            teams = teams_result.fetchall()
+
+            created = 0
+            for team_id, abbreviation in teams:
+                # Check if sentiment already exists for this team today
+                existing = db.execute(
+                    text("""
+                        SELECT id FROM team_sentiment
+                        WHERE teamId = :team_id
+                        AND measuredAt > NOW() - INTERVAL '1 hour'
+                        LIMIT 1
+                    """),
+                    {"team_id": team_id}
+                ).fetchone()
+
+                if existing:
+                    continue
+
+                # Create mock sentiment data
+                score = round(60 + random.random() * 40, 1)
+                trend = "up" if random.random() > 0.5 else "down"
+                buzz_volume = int(100 + random.random() * 500)
+                bluesky_score = round(50 + random.random() * 50, 1)
+                reddit_score = round(50 + random.random() * 50, 1)
+                news_score = round(50 + random.random() * 50, 1)
+
+                db.execute(
+                    text("""
+                        INSERT INTO team_sentiment
+                        (teamId, seasonId, measuredAt, score, trend, buzzVolume,
+                         blueskyScore, redditScore, newsScore, hotTopics, sourceBreakdown)
+                        VALUES
+                        (:team_id, :season_id, NOW(), :score, :trend, :buzz_volume,
+                         :bluesky_score, :reddit_score, :news_score,
+                         '["playoffs", "heisman", "coaching"]'::jsonb,
+                         '{"bluesky": 30, "reddit": 50, "news": 20}'::jsonb)
+                    """),
+                    {
+                        "team_id": team_id,
+                        "season_id": season_id,
+                        "score": score,
+                        "trend": trend,
+                        "buzz_volume": buzz_volume,
+                        "bluesky_score": bluesky_score,
+                        "reddit_score": reddit_score,
+                        "news_score": news_score,
+                    }
+                )
+                created += 1
+
+            return {
+                "success": True,
+                "message": f"Created mock sentiment data for {created} teams",
+                "teams_created": created,
+            }
+    except Exception as e:
+        logger.error(f"Error creating mock data: {e}", exc_info=True)
+        return {"success": False, "message": str(e)}
+
+
+# ============================================================================
 # Cron Job Handler
 # ============================================================================
 
