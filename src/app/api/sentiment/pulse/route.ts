@@ -89,7 +89,7 @@ export async function GET(req: NextRequest) {
       cacheKey,
       async () => {
         // Get season record
-        const seasonRec = await prisma.season.findUnique({
+        const seasonRec = await prisma.season.findFirst({
           where: { year: season },
           select: { id: true },
         });

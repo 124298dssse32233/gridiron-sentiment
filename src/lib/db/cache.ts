@@ -58,6 +58,8 @@ export const CACHE_TTL = {
   ROSTER: 3600,
   /** SOS and strength calculations */
   SOS: 3600,
+  /** Pulse sentiment data (updated every 30 min) */
+  PULSE: 1800,
 } as const;
 
 // ============================================================================
@@ -802,6 +804,12 @@ export const cacheKeys = {
    */
   predictions: (season: number, week: number): string =>
     `predictions:${season}:${week}`,
+
+  /**
+   * Pulse sentiment cache key
+   */
+  pulse: (season: number, week: number | string): string =>
+    `pulse:${season}:${week}`,
 
   /**
    * Awards tracker cache key
