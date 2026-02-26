@@ -71,13 +71,13 @@ app = FastAPI(
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Railway Postgres provides DATABASE_URL starting with "postgres://..."
-# SQLAlchemy 2.0 requires "postgresql://..." — fix on the fly.
+# SQLAlchemy 2.0 requires "postgresql://..." â fix on the fly.
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     logger.info("Rewrote DATABASE_URL scheme: postgres:// -> postgresql://")
 
 if not DATABASE_URL:
-    logger.warning("DATABASE_URL not set — running in mock mode (no persistence)")
+    logger.warning("DATABASE_URL not set â running in mock mode (no persistence)")
 
 engine = None
 SessionLocal = None
@@ -269,7 +269,7 @@ async def health_check():
     """
     Health check endpoint.
 
-    Returns 200 as long as the service is running — even if the DB is
+    Returns 200 as long as the service is running â even if the DB is
     temporarily unreachable.  Railway uses this to confirm the process is
     alive.  Downstream monitors can inspect the `database` field for
     deeper status.
@@ -331,21 +331,17 @@ async def get_stats():
 
     try:
         with get_db() as db:
-            raw_count = db.query(SentimentRaw).filter_by(processed=False).count()
-            team_sentiment_count = db.query(TeamSentiment).count()
-            player_sentiment_count = db.query(PlayerSentiment).count()
-            latest = (
-                db.query(TeamSentiment)
-                .order_by(TeamSentiment.measuredAt.desc())
-                .first()
-            )
+            raw_count = db.execute(text('SELECT COUNT(*) FROM "SentimentRaw" WHERE processed = false')).scalar() or 0
+            team_sentiment_count = db.execute(text('SELECT COUNT(*) FROM "TeamSentiment"')).scalar() or 0
+            player_sentiment_count = db.execute(text('SELECT COUNT(*) FROM "PlayerSentiment"')).scalar() or 0
+            latest_row = db.execute(text('SELECT "measuredAt" FROM "TeamSentiment" ORDER BY "measuredAt" DESC LIMIT 1')).fetchone()
 
             return {
                 "raw_unprocessed": raw_count,
                 "team_sentiments": team_sentiment_count,
                 "player_sentiments": player_sentiment_count,
                 "latest_measurement": (
-                    latest.measuredAt.isoformat() if latest else None
+                    latest_row[0].isoformat() if latest_row else None
                 ),
             }
     except Exception as e:
@@ -441,6 +437,132 @@ async def create_mock_data():
             }
     except Exception as e:
         logger.error(f"Error creating mock data: {e}", exc_info=True)
+        return {"success": False, "message": str(e)}
+
+
+# ============================================================================
+# Mock Player & Coach Data Endpoints
+# ============================================================================
+
+@app.post("/mock/players")
+async def create_mock_player_data():
+    """Create mock player sentiment data for testing."""
+    if not SessionLocal:
+        return {"success": False, "message": "Database not configured"}
+
+    try:
+        import random
+
+        MOCK_PLAYERS = [
+            {"name": "Jalen Milroe", "teamId": 1, "position": "QB"},
+            {"name": "Carson Beck", "teamId": 132, "position": "QB"},
+            {"name": "Will Howard", "teamId": 194, "position": "QB"},
+            {"name": "Shedeur Sanders", "teamId": 231, "position": "QB"},
+            {"name": "Cam Ward", "teamId": 15, "position": "QB"},
+            {"name": "Travis Hunter", "teamId": 231, "position": "WR"},
+            {"name": "Abdul Carter", "teamId": 116, "position": "LB"},
+            {"name": "Mason Graham", "teamId": 52, "position": "DL"},
+            {"name": "Jaxson Dart", "teamId": 58, "position": "QB"},
+            {"name": "Dillon Gabriel", "teamId": 261, "position": "QB"},
+        ]
+
+        with get_db() as db:
+            season_result = db.execute(text('SELECT id FROM "Season" WHERE year = 2024 LIMIT 1'))
+            season_row = season_result.fetchone()
+            if not season_row:
+                return {"success": False, "message": "Season 2024 not found"}
+            season_id = season_row[0]
+
+            # Clear existing
+            db.execute(text('DELETE FROM "PlayerSentiment" WHERE "seasonId" = :sid'), {"sid": season_id})
+
+            created = 0
+            for p in MOCK_PLAYERS:
+                zscore = round(random.random() * 5, 2)
+                status = None
+                if zscore > 3.5:
+                    status = "VIRAL"
+                elif zscore > 2:
+                    status = "TRENDING"
+                elif zscore > 1:
+                    status = "RISING"
+
+                db.execute(
+                    text('''
+                        INSERT INTO "PlayerSentiment"
+                        ("seasonId", "playerName", "teamId", position, "buzzZscore", "buzzStatus",
+                         "mentionCount", "sentimentScore")
+                        VALUES (:sid, :name, :tid, :pos, :zscore, :status, :mentions, :score)
+                    '''),
+                    {
+                        "sid": season_id,
+                        "name": p["name"],
+                        "tid": p["teamId"],
+                        "pos": p["position"],
+                        "zscore": zscore,
+                        "status": status,
+                        "mentions": int(50 + random.random() * 2000),
+                        "score": round(0.3 + random.random() * 0.6, 3),
+                    }
+                )
+                created += 1
+
+            return {"success": True, "message": f"Created {created} player sentiments", "players_created": created}
+    except Exception as e:
+        logger.error(f"Error creating mock player data: {e}", exc_info=True)
+        return {"success": False, "message": str(e)}
+
+
+@app.post("/mock/coaches")
+async def create_mock_coach_data():
+    """Create mock coach approval data for testing."""
+    if not SessionLocal:
+        return {"success": False, "message": "Database not configured"}
+
+    try:
+        import random
+
+        MOCK_COACHES = [
+            {"teamId": 1, "name": "Kalen DeBoer"},
+            {"teamId": 132, "name": "Kirby Smart"},
+            {"teamId": 194, "name": "Ryan Day"},
+            {"teamId": 52, "name": "Sherrone Moore"},
+            {"teamId": 231, "name": "Steve Sarkisian"},
+            {"teamId": 58, "name": "Mike Norvell"},
+            {"teamId": 238, "name": "Dan Lanning"},
+            {"teamId": 116, "name": "James Franklin"},
+            {"teamId": 156, "name": "Marcus Freeman"},
+            {"teamId": 261, "name": "Brent Venables"},
+        ]
+
+        with get_db() as db:
+            # Clear existing
+            db.execute(text('DELETE FROM "CoachApproval" WHERE season = 2024'))
+
+            created = 0
+            for c in MOCK_COACHES:
+                trends = ["up", "down", "stable"]
+                db.execute(
+                    text('''
+                        INSERT INTO "CoachApproval"
+                        (season, "teamId", "coachName", "approvalScore", "approvalTrend",
+                         "mentionCount", "measuredAt")
+                        VALUES (:season, :tid, :name, :score, :trend, :mentions, NOW())
+                    '''),
+                    {
+                        "season": 2024,
+                        "tid": c["teamId"],
+                        "name": c["name"],
+                        "score": round(30 + random.random() * 65, 1),
+                        "trend": trends[int(random.random() * 3)],
+                        "mentions": int(100 + random.random() * 3000),
+                    }
+                )
+                created += 1
+
+            return {"success": True, "message": f"Created {created} coach approvals", "coaches_created": created}
+    except Exception as e:
+        logger.error(f"Error creating mock coach data: {e}", exc_info=True)
         return {"success": False, "message": str(e)}
 
 
