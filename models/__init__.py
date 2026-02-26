@@ -20,14 +20,14 @@ Base = declarative_base()
 
 class Team(Base):
     """CFB Team"""
-    __tablename__ = "team"
+    __tablename__ = "Team"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
     abbreviation = Column(String, nullable=True)
     slug = Column(String, nullable=False, unique=True)
     logoUrl = Column(String, nullable=True)
-    levelId = Column(Integer, ForeignKey("level.id"), nullable=True)
+    levelId = Column(Integer, ForeignKey("Level.id"), nullable=True)
 
     # Relations
     level = relationship("Level", foreign_keys=[levelId])
@@ -37,7 +37,7 @@ class Team(Base):
 
 class Level(Base):
     """Competition level (FBS, FCS, D2, D3, NAIA)"""
-    __tablename__ = "level"
+    __tablename__ = "Level"
 
     id = Column(Integer, primary_key=True)
     name = Column(String, nullable=False)
@@ -45,7 +45,7 @@ class Level(Base):
 
 class Season(Base):
     """Season"""
-    __tablename__ = "season"
+    __tablename__ = "Season"
 
     id = Column(Integer, primary_key=True)
     year = Column(Integer, nullable=False, unique=True)
@@ -53,7 +53,7 @@ class Season(Base):
 
 class SentimentRaw(Base):
     """Raw ingested posts buffer"""
-    __tablename__ = "sentiment_raw"
+    __tablename__ = "SentimentRaw"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     source = Column(String, nullable=False)  # 'bluesky', 'reddit', 'news'
@@ -70,11 +70,11 @@ class SentimentRaw(Base):
 
 class TeamSentiment(Base):
     """Aggregate sentiment per team per measurement period"""
-    __tablename__ = "team_sentiment"
+    __tablename__ = "TeamSentiment"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    teamId = Column(Integer, ForeignKey("team.id"), nullable=False, index=True)
-    seasonId = Column(Integer, ForeignKey("season.id"), nullable=False, index=True)
+    teamId = Column(Integer, ForeignKey("Team.id"), nullable=False, index=True)
+    seasonId = Column(Integer, ForeignKey("Season.id"), nullable=False, index=True)
     measuredAt = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     score = Column(Float, nullable=True)
@@ -98,12 +98,12 @@ class TeamSentiment(Base):
 
 class PlayerSentiment(Base):
     """Player buzz tracking"""
-    __tablename__ = "player_sentiment"
+    __tablename__ = "PlayerSentiment"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     playerName = Column(String, nullable=False, index=True)
-    teamId = Column(Integer, ForeignKey("team.id"), nullable=True, index=True)
-    seasonId = Column(Integer, ForeignKey("season.id"), nullable=False, index=True)
+    teamId = Column(Integer, ForeignKey("Team.id"), nullable=True, index=True)
+    seasonId = Column(Integer, ForeignKey("Season.id"), nullable=False, index=True)
     position = Column(String, nullable=True)
 
     buzzZscore = Column(Float, nullable=True)
@@ -118,11 +118,11 @@ class PlayerSentiment(Base):
 
 class TeamBuzz(Base):
     """Google Trends search volume data"""
-    __tablename__ = "team_buzz"
+    __tablename__ = "TeamBuzz"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    teamId = Column(Integer, ForeignKey("team.id"), nullable=False, index=True)
-    seasonId = Column(Integer, ForeignKey("season.id"), nullable=False, index=True)
+    teamId = Column(Integer, ForeignKey("Team.id"), nullable=False, index=True)
+    seasonId = Column(Integer, ForeignKey("Season.id"), nullable=False, index=True)
 
     weekStart = Column(DateTime, nullable=False, index=True)
     weekNumber = Column(Integer, nullable=True)
@@ -138,10 +138,10 @@ class TeamBuzz(Base):
 
 class CoachApproval(Base):
     """Coach approval ratings"""
-    __tablename__ = "coach_approval"
+    __tablename__ = "CoachApproval"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    teamId = Column(Integer, ForeignKey("team.id"), nullable=False, index=True)
+    teamId = Column(Integer, ForeignKey("Team.id"), nullable=False, index=True)
     season = Column(Integer, nullable=False, index=True)
     weekNumber = Column(Integer, nullable=True)
 
@@ -160,10 +160,10 @@ class CoachApproval(Base):
 
 class SentimentStory(Base):
     """Auto-generated weekly narrative stories"""
-    __tablename__ = "sentiment_story"
+    __tablename__ = "SentimentStory"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    seasonId = Column(Integer, ForeignKey("season.id"), nullable=False, index=True)
+    seasonId = Column(Integer, ForeignKey("Season.id"), nullable=False, index=True)
     weekNumber = Column(Integer, nullable=False)
     weekStart = Column(DateTime, nullable=False)
 
