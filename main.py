@@ -14,19 +14,25 @@ Runs on Railway with cron-based processing every 6 hours.
 Environment Variables:
     DATABASE_URL: PostgreSQL connection string
     REDIS_URL: Redis URL for caching (optional)
+    PORT: Server port (default 8000, Railway overrides this)
+    ENVIRONMENT: "production" or "development"
+    LOG_LEVEL: Logging level (default INFO)
 """
 
 import os
+import sys
+import time
 import asyncio
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
+from contextlib import contextmanager
 from typing import Optional, List, Dict, Any
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 import httpx
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 
 # Import models
@@ -36,30 +42,87 @@ from models import (
     Team, Season, Base
 )
 
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+# ============================================================================
+# Logging
+# ============================================================================
 
-# FastAPI app
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+logging.basicConfig(
+    level=getattr(logging, LOG_LEVEL, logging.INFO),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    stream=sys.stdout,
+)
+logger = logging.getLogger("gridiron.sentiment")
+
+# ============================================================================
+# FastAPI App
+# ============================================================================
+
 app = FastAPI(
     title="Gridiron Intel Sentiment Service",
     description="CFB Sentiment Analysis Microservice",
-    version="1.0.0"
+    version="1.0.0",
 )
 
-# Database setup
+# ============================================================================
+# Database
+# ============================================================================
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+# Railway Postgres provides DATABASE_URL starting with "postgres://..."
+# SQLAlchemy 2.0 requires "postgresql://..." — fix on the fly.
+if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+    logger.info("Rewrote DATABASE_URL scheme: postgres:// -> postgresql://")
+
 if not DATABASE_URL:
-    logger.warning("DATABASE_URL not set - using mock mode")
+    logger.warning("DATABASE_URL not set — running in mock mode (no persistence)")
 
 engine = None
 SessionLocal = None
 if DATABASE_URL:
-    engine = create_engine(DATABASE_URL, pool_pre_ping=True, pool_size=5, max_overflow=10)
+    engine = create_engine(
+        DATABASE_URL,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10,
+        pool_recycle=300,       # Recycle connections every 5 min (Railway idle timeout)
+        connect_args={
+            "connect_timeout": 10,
+            "options": "-c statement_timeout=30000",  # 30 s query timeout
+        },
+    )
     SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+
+@contextmanager
+def get_db():
+    """Context manager for database sessions with automatic cleanup."""
+    if not SessionLocal:
+        raise RuntimeError("Database not configured")
+    db = SessionLocal()
+    try:
+        yield db
+        db.commit()
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
+
+
+# ============================================================================
+# Startup State (tracked for /health introspection)
+# ============================================================================
+
+_startup_state: Dict[str, Any] = {
+    "started_at": None,
+    "db_ok": False,
+    "tables_created": False,
+    "models_loaded": False,
+    "ready": False,
+}
 
 
 # ============================================================================
@@ -72,7 +135,7 @@ class ProcessRequest(BaseModel):
     week: Optional[int] = Field(default=None, description="Week number (None for current)")
     sources: List[str] = Field(
         default=["bluesky", "reddit", "news", "trends"],
-        description="Data sources to process"
+        description="Data sources to process",
     )
     force: bool = Field(default=False, description="Force re-processing")
 
@@ -88,18 +151,20 @@ class HealthResponse(BaseModel):
     """Health check response"""
     status: str
     database: bool
+    models_loaded: bool
+    uptime_seconds: float
     timestamp: str
 
 
 # ============================================================================
-# Sentiment Pipeline (Simplified)
+# Sentiment Pipeline
 # ============================================================================
 
 async def process_sentiment_pipeline(
     db: Session,
     season: int,
     week: Optional[int],
-    sources: List[str]
+    sources: List[str],
 ) -> Dict[str, Any]:
     """
     Run the full sentiment pipeline.
@@ -109,34 +174,40 @@ async def process_sentiment_pipeline(
     3. Extract entities and aggregate
     4. Generate stories
     """
-    stats = {}
+    stats: Dict[str, Any] = {}
+    pipeline_start = time.monotonic()
 
     try:
         # Step 1: Collect data
         for source in sources:
-            if source == "bluesky":
-                from collectors.bluesky_collector import BlueskyCollector
-                collector = BlueskyCollector(db)
-                count = await collector.collect(season, week)
-                stats["bluesky_collected"] = count
+            try:
+                if source == "bluesky":
+                    from collectors.bluesky_collector import BlueskyCollector
+                    collector = BlueskyCollector(db)
+                    count = await collector.collect(season, week)
+                    stats["bluesky_collected"] = count
 
-            elif source == "reddit":
-                from collectors.reddit_collector import RedditCollector
-                collector = RedditCollector(db)
-                count = await collector.collect(season, week)
-                stats["reddit_collected"] = count
+                elif source == "reddit":
+                    from collectors.reddit_collector import RedditCollector
+                    collector = RedditCollector(db)
+                    count = await collector.collect(season, week)
+                    stats["reddit_collected"] = count
 
-            elif source == "news":
-                from collectors.news_collector import NewsCollector
-                collector = NewsCollector(db)
-                count = await collector.collect(season, week)
-                stats["news_collected"] = count
+                elif source == "news":
+                    from collectors.news_collector import NewsCollector
+                    collector = NewsCollector(db)
+                    count = await collector.collect(season, week)
+                    stats["news_collected"] = count
 
-            elif source == "trends":
-                from collectors.trends_collector import TrendsCollector
-                collector = TrendsCollector(db)
-                count = await collector.collect(season, week)
-                stats["trends_collected"] = count
+                elif source == "trends":
+                    from collectors.trends_collector import TrendsCollector
+                    collector = TrendsCollector(db)
+                    count = await collector.collect(season, week)
+                    stats["trends_collected"] = count
+
+            except Exception as e:
+                logger.error(f"Collector '{source}' failed: {e}", exc_info=True)
+                stats[f"{source}_error"] = str(e)
 
         # Step 2: Analyze sentiment
         from analyzers.nlp_analyzer import NLPAnalyzer
@@ -161,99 +232,118 @@ async def process_sentiment_pipeline(
             stories = await generator.generate_weekly_stories(season, week)
             stats["stories_generated"] = len(stories)
 
+        stats["pipeline_duration_s"] = round(time.monotonic() - pipeline_start, 2)
         return stats
 
     except Exception as e:
-        logger.error(f"Error in pipeline: {e}", exc_info=True)
+        logger.error(f"Pipeline error: {e}", exc_info=True)
         raise
 
 
 # ============================================================================
-# API Endpoints
+# Health Check
 # ============================================================================
+
+def _check_db_health() -> bool:
+    """Lightweight DB connectivity check."""
+    if not engine:
+        return False
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return True
+    except Exception as e:
+        logger.warning(f"DB health check failed: {e}")
+        return False
+
 
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
-    """Health check endpoint"""
-    db_ok = False
-    if engine:
-        try:
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            db_ok = True
-        except Exception as e:
-            logger.error(f"Database health check failed: {e}")
+    """
+    Health check endpoint.
+
+    Returns 200 as long as the service is running — even if the DB is
+    temporarily unreachable.  Railway uses this to confirm the process is
+    alive.  Downstream monitors can inspect the `database` field for
+    deeper status.
+    """
+    db_ok = _check_db_health()
+
+    uptime = 0.0
+    if _startup_state["started_at"]:
+        uptime = time.monotonic() - _startup_state["started_at"]
 
     return HealthResponse(
-        status="healthy" if db_ok else "unhealthy",
+        status="healthy",
         database=db_ok,
-        timestamp=datetime.utcnow().isoformat()
+        models_loaded=_startup_state["models_loaded"],
+        uptime_seconds=round(uptime, 1),
+        timestamp=datetime.now(timezone.utc).isoformat(),
     )
 
+
+# ============================================================================
+# Process Endpoint
+# ============================================================================
 
 @app.post("/process", response_model=ProcessResponse)
 async def process_sentiment(request: ProcessRequest, background_tasks: BackgroundTasks):
     """
     Trigger sentiment processing.
 
-    This endpoint collects data from sources, analyzes sentiment,
-    and updates the database with aggregated results.
+    Collects data from sources, analyzes sentiment, and updates the
+    database with aggregated results.
     """
     if not SessionLocal:
-        return ProcessResponse(
-            success=False,
-            message="Database not configured"
-        )
+        return ProcessResponse(success=False, message="Database not configured")
 
-    db = SessionLocal()
     try:
-        stats = await process_sentiment_pipeline(
-            db,
-            request.season,
-            request.week,
-            request.sources
-        )
-
+        with get_db() as db:
+            stats = await process_sentiment_pipeline(
+                db, request.season, request.week, request.sources
+            )
         return ProcessResponse(
             success=True,
             message=f"Processed sentiment data for {request.season}",
-            stats=stats
+            stats=stats,
         )
-
     except Exception as e:
         logger.error(f"Error processing sentiment: {e}", exc_info=True)
-        return ProcessResponse(
-            success=False,
-            message=str(e)
-        )
-    finally:
-        db.close()
+        return ProcessResponse(success=False, message=str(e))
 
+
+# ============================================================================
+# Stats Endpoint
+# ============================================================================
 
 @app.get("/stats")
 async def get_stats():
-    """Get sentiment processing statistics"""
+    """Get sentiment processing statistics."""
     if not SessionLocal:
         return {"error": "Database not configured"}
 
-    db = SessionLocal()
     try:
-        # Get counts from tables
-        raw_count = db.query(SentimentRaw).filter_by(processed=False).count()
-        team_sentiment_count = db.query(TeamSentiment).count()
-        player_sentiment_count = db.query(PlayerSentiment).count()
+        with get_db() as db:
+            raw_count = db.query(SentimentRaw).filter_by(processed=False).count()
+            team_sentiment_count = db.query(TeamSentiment).count()
+            player_sentiment_count = db.query(PlayerSentiment).count()
+            latest = (
+                db.query(TeamSentiment)
+                .order_by(TeamSentiment.measuredAt.desc())
+                .first()
+            )
 
-        # Get latest measurement
-        latest = db.query(TeamSentiment).order_by(TeamSentiment.measuredAt.desc()).first()
-
-        return {
-            "raw_unprocessed": raw_count,
-            "team_sentiments": team_sentiment_count,
-            "player_sentiments": player_sentiment_count,
-            "latest_measurement": latest.measuredAt.isoformat() if latest else None
-        }
-    finally:
-        db.close()
+            return {
+                "raw_unprocessed": raw_count,
+                "team_sentiments": team_sentiment_count,
+                "player_sentiments": player_sentiment_count,
+                "latest_measurement": (
+                    latest.measuredAt.isoformat() if latest else None
+                ),
+            }
+    except Exception as e:
+        logger.error(f"Stats query failed: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail="Failed to fetch stats")
 
 
 # ============================================================================
@@ -269,70 +359,75 @@ async def cron_process():
     """
     logger.info("Cron job triggered: processing sentiment")
 
-    # Determine current season/week
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     season = now.year if now.month >= 8 else now.year - 1
-    week = None  # Let it auto-determine
+    week = None  # Auto-determine
 
     if not SessionLocal:
         return {"success": False, "message": "Database not configured"}
 
-    db = SessionLocal()
     try:
-        stats = await process_sentiment_pipeline(
-            db,
-            season,
-            week,
-            ["bluesky", "reddit", "news"]  # Skip trends (daily only)
-        )
-
+        with get_db() as db:
+            stats = await process_sentiment_pipeline(
+                db, season, week,
+                ["bluesky", "reddit", "news"],  # Skip trends (daily only)
+            )
         return {"success": True, "stats": stats}
-
     except Exception as e:
         logger.error(f"Cron job failed: {e}", exc_info=True)
         return {"success": False, "message": str(e)}
-    finally:
-        db.close()
 
 
 # ============================================================================
-# Startup
+# Lifecycle
 # ============================================================================
 
 @app.on_event("startup")
 async def startup_event():
-    """Initialize service on startup"""
+    """Initialize service on startup."""
+    _startup_state["started_at"] = time.monotonic()
     logger.info("Starting Gridiron Intel Sentiment Service")
+    logger.info(f"  PORT={os.getenv('PORT', '8000')}")
+    logger.info(f"  ENVIRONMENT={os.getenv('ENVIRONMENT', 'production')}")
+    logger.info(f"  DATABASE_URL={'set' if DATABASE_URL else 'NOT SET'}")
 
+    # --- Database -----------------------------------------------------------
     if DATABASE_URL and engine:
         try:
-            # Create all tables if they don't exist
             Base.metadata.create_all(engine)
-            logger.info("Database tables created/verified")
-
-            # Test database connection
-            with engine.connect() as conn:
-                conn.execute("SELECT 1")
-            logger.info("Database connection established")
+            _startup_state["tables_created"] = True
+            logger.info("Database tables created / verified")
         except Exception as e:
-            logger.error(f"Failed to connect to database: {e}")
+            logger.error(f"Table creation failed: {e}", exc_info=True)
 
-    # Initialize NLP models
+        try:
+            with engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            _startup_state["db_ok"] = True
+            logger.info("Database connection verified")
+        except Exception as e:
+            logger.error(f"Database connection test failed: {e}", exc_info=True)
+
+    # --- NLP Models ---------------------------------------------------------
     try:
         from analyzers.nlp_analyzer import NLPAnalyzer
         NLPAnalyzer.load_models()
-        logger.info("NLP models loaded")
+        _startup_state["models_loaded"] = True
+        logger.info("NLP models loaded (VADER ready, DistilBERT deferred)")
     except Exception as e:
-        logger.warning(f"Failed to load NLP models: {e}")
+        logger.warning(f"NLP model pre-load failed (will retry on first request): {e}")
+
+    _startup_state["ready"] = True
+    logger.info("Sentiment Service ready")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Cleanup on shutdown"""
+    """Cleanup on shutdown."""
     logger.info("Shutting down Gridiron Intel Sentiment Service")
-
     if engine:
         engine.dispose()
+        logger.info("Database connections closed")
 
 
 # ============================================================================
@@ -341,9 +436,10 @@ async def shutdown_event():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
         port=int(os.getenv("PORT", 8000)),
-        reload=os.getenv("ENVIRONMENT") == "development"
+        reload=os.getenv("ENVIRONMENT") == "development",
     )
