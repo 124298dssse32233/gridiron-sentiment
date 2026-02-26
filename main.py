@@ -71,13 +71,13 @@ app = FastAPI(
 DATABASE_URL = os.getenv("DATABASE_URL")
 
 # Railway Postgres provides DATABASE_URL starting with "postgres://..."
-# SQLAlchemy 2.0 requires "postgresql://..." â fix on the fly.
+# SQLAlchemy 2.0 requires "postgresql://..." Ã¢ÂÂ fix on the fly.
 if DATABASE_URL and DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
     logger.info("Rewrote DATABASE_URL scheme: postgres:// -> postgresql://")
 
 if not DATABASE_URL:
-    logger.warning("DATABASE_URL not set â running in mock mode (no persistence)")
+    logger.warning("DATABASE_URL not set Ã¢ÂÂ running in mock mode (no persistence)")
 
 engine = None
 SessionLocal = None
@@ -269,7 +269,7 @@ async def health_check():
     """
     Health check endpoint.
 
-    Returns 200 as long as the service is running â even if the DB is
+    Returns 200 as long as the service is running Ã¢ÂÂ even if the DB is
     temporarily unreachable.  Railway uses this to confirm the process is
     alive.  Downstream monitors can inspect the `database` field for
     deeper status.
@@ -546,8 +546,8 @@ async def create_mock_coach_data():
                     text('''
                         INSERT INTO "CoachApproval"
                         (season, "teamId", "coachName", "approvalScore", "approvalTrend",
-                         "mentionCount", "measuredAt")
-                        VALUES (:season, :tid, :name, :score, :trend, :mentions, NOW())
+                         "mentionCount", "measuredAt", "updatedAt")
+                        VALUES (:season, :tid, :name, :score, :trend, :mentions, NOW(), NOW())
                     '''),
                     {
                         "season": 2024,
