@@ -35,17 +35,19 @@ RUN python -c "from transformers import DistilBertForSequenceClassification, Dis
 # Copy application code
 COPY . .
 
+# Make entrypoint executable
+RUN chmod +x start.sh
+
 # Create non-root user
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
 USER appuser
 
-# Expose default port (Railway may override via $PORT)
-EXPOSE ${PORT}
+# Expose default port
+EXPOSE 8000
 
-# Health check — uses $PORT so it always matches the running server.
-# start-period gives DistilBERT time to load on first boot.
+# Health check — shell form so $PORT expands at runtime
 HEALTHCHECK --interval=30s --timeout=10s --start-period=120s --retries=3 \
-    CMD curl -f http://localhost:${PORT}/health || exit 1
+    CMD curl -f http://localhost:${PORT:-8000}/health || exit 1
 
-# Default CMD (Railway overrides via railway.toml startCommand)
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT}
+# Start via shell script to guarantee $PORT expansion
+CMD ["./start.sh"]
