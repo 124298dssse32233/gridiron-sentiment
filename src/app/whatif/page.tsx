@@ -1,0 +1,17 @@
+export default function WhatIfPage() {
+  return (
+    <div className="max-w-7xl mx-auto px-4 py-16">
+      <h1 className="font-display text-4xl text-text-primary mb-4">
+        What If Engine
+      </h1>
+      <p className="text-text-secondary mb-8">
+        Change game outcomes and watch the rankings recalculate in real time.
+      </p>
+      <div className="bg-bg-card rounded-lg p-8 border border-bg-elevated">
+        <p className="text-text-muted">
+          Scenario engine will be built here.
+        </p>
+      </div>
+    </div>
+  );
+}

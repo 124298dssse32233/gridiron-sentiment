@@ -1,0 +1,78 @@
+<svg viewBox="0 0 192 192" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background - deep navy with rounded corners -->
+  <rect width="192" height="192" rx="36" fill="#0a0e17"/>
+
+  <!-- Subtle grid pattern (football field) -->
+  <defs>
+    <pattern id="fieldPattern" width="24" height="24" patternUnits="userSpaceOnUse">
+      <path d="M 24 0 L 0 0 0 24" fill="none" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+    </pattern>
+
+    <!-- Enhanced glow filter -->
+    <filter id="glowIcon">
+      <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Radial gradient for the G -->
+    <radialGradient id="gRadial" cx="50%" cy="40%">
+      <stop offset="0%" style="stop-color:#00f5d4;stop-opacity:1" />
+      <stop offset="70%" style="stop-color:#00d4b4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0094a8;stop-opacity:0.9" />
+    </radialGradient>
+
+    <!-- Shadow filter -->
+    <filter id="shadow" x="-50%" y="-50%" width="200%" height="200%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00f5d4" flood-opacity="0.15"/>
+    </filter>
+  </defs>
+
+  <!-- Grid pattern background -->
+  <rect width="192" height="192" rx="36" fill="url(#fieldPattern)"/>
+
+  <!-- Yard line markers (vertical) for field effect) -->
+  <line x1="48" y1="30" x2="48" y2="162" stroke="#00f5d4" stroke-width="1" opacity="0.1"/>
+  <line x1="96" y1="30" x2="96" y2="162" stroke="#00f5d4" stroke-width="1.25" opacity="0.12"/>
+  <line x1="144" y1="30" x2="144" y2="162" stroke="#00f5d4" stroke-width="1" opacity="0.1"/>
+
+  <!-- Hash marks (horizontal) -->
+  <line x1="24" y1="72" x2="168" y2="72" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+  <line x1="24" y1="120" x2="168" y2="120" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+
+  <!-- Main "G" shape with enhanced styling -->
+  <g filter="url(#shadow)">
+    <path d="M 142 45 C 162 45 177 60 177 80 L 177 112 C 177 132 162 147 142 147 C 122 147 105 132 105 112 L 105 98 L 127 98 L 127 112 C 127 124 134 131 142 131 C 150 131 157 124 157 112 L 157 80 C 157 72 150 65 142 65 C 131 65 124 72 124 80 L 124 98 L 105 98 L 105 80 C 105 60 122 45 142 45 Z"
+          fill="url(#gRadial)" stroke="#00f5d4" stroke-width="2.5" filter="url(#glowIcon)"/>
+  </g>
+
+  <!-- Football details - laces and elements -->
+  <g opacity="0.7">
+    <!-- Top lace -->
+    <circle cx="161" cy="65" r="3.5" fill="#00f5d4"/>
+    <!-- Middle laces -->
+    <circle cx="170" cy="75" r="3" fill="#00f5d4"/>
+    <circle cx="166" cy="88" r="3" fill="#00f5d4"/>
+    <circle cx="171" cy="100" r="3" fill="#00f5d4"/>
+    <!-- Bottom lace -->
+    <circle cx="164" cy="115" r="3.5" fill="#00f5d4"/>
+
+    <!-- Connecting lace threads -->
+    <path d="M 161 65 Q 165 75 170 75" stroke="#00f5d4" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M 170 75 Q 168 82 166 88" stroke="#00f5d4" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M 166 88 Q 168 94 171 100" stroke="#00f5d4" stroke-width="1.5" fill="none" opacity="0.5"/>
+    <path d="M 171 100 Q 168 107 164 115" stroke="#00f5d4" stroke-width="1.5" fill="none" opacity="0.5"/>
+  </g>
+
+  <!-- Subtle accent border top -->
+  <rect x="0" y="0" width="192" height="3" rx="36" fill="#00f5d4" opacity="0.25"/>
+
+  <!-- Corner accent dots (visual interest) -->
+  <circle cx="24" cy="24" r="2.5" fill="#7b61ff" opacity="0.3"/>
+  <circle cx="168" cy="168" r="2.5" fill="#7b61ff" opacity="0.3"/>
+
+  <!-- Additional glow effect -->
+  <circle cx="96" cy="96" r="85" fill="none" stroke="#00f5d4" stroke-width="0.5" opacity="0.08" rx="36"/>
+</svg>

@@ -1,0 +1,118 @@
+{
+  "name": "Gridiron Intel",
+  "short_name": "GridRank",
+  "description": "Every college football team in America, ranked on one unified list. Analytics-driven rankings across all divisions (FBS, FCS, D2, D3, NAIA).",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0e17",
+  "theme_color": "#00f5d4",
+  "lang": "en-US",
+  "categories": ["sports", "news", "productivity"],
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/images/screenshot-1.png",
+      "type": "image/png",
+      "sizes": "540x720",
+      "form_factor": "narrow"
+    },
+    {
+      "src": "/images/screenshot-2.png",
+      "type": "image/png",
+      "sizes": "1280x720",
+      "form_factor": "wide"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "View Rankings",
+      "short_name": "Rankings",
+      "description": "See current GridRank college football rankings",
+      "url": "/?mode=rankings",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "type": "image/svg+xml",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Gameday Dashboard",
+      "short_name": "Gameday",
+      "description": "Check live scores and game updates",
+      "url": "/gameday",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "type": "image/svg+xml",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Predictions",
+      "short_name": "Predictions",
+      "description": "View this week's game predictions",
+      "url": "/predictions",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "type": "image/svg+xml",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "Matchup Machine",
+      "short_name": "Matchup",
+      "description": "Simulate any college football matchup",
+      "url": "/matchup",
+      "icons": [
+        {
+          "src": "/icon.svg",
+          "type": "image/svg+xml",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ],
+  "share_target": {
+    "action": "/share",
+    "method": "POST",
+    "enctype": "application/x-www-form-urlencoded",
+    "params": {
+      "title": "title",
+      "text": "text",
+      "url": "url"
+    }
+  },
+  "prefer_related_applications": false
+}

@@ -1,0 +1,711 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Sport {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  levels    Level[]
+  seasons   Season[]
+}
+
+model Level {
+  id          Int          @id @default(autoincrement())
+  sportId     Int
+  name        String
+  slug        String
+  baseRating  Decimal      @db.Decimal(8, 2)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  conferences Conference[]
+  sport       Sport        @relation(fields: [sportId], references: [id])
+  teams       Team[]
+
+  @@unique([sportId, slug])
+}
+
+model Conference {
+  id           Int      @id @default(autoincrement())
+  levelId      Int
+  name         String
+  abbreviation String?
+  slug         String
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  level        Level    @relation(fields: [levelId], references: [id])
+  teams        Team[]
+
+  @@unique([levelId, slug])
+}
+
+model Team {
+  id                   Int                  @id @default(autoincrement())
+  name                 String
+  mascot               String?
+  abbreviation         String?
+  slug                 String               @unique
+  conferenceId         Int?
+  levelId              Int
+  primaryColor         String?
+  secondaryColor       String?
+  logoUrl              String?
+  city                 String?
+  state                String?
+  stadium              String?
+  stadiumCapacity      Int?
+  metadata             Json?                @default("{}")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  awardCandidates      AwardCandidate[]
+  coachApprovals       CoachApproval[]
+  coachDecisions       CoachDecision[]
+  coachGrades          CoachGrade[]
+  divisionTransitions  DivisionTransition[]
+  awayGames            Game[]               @relation("AwayTeam")
+  homeGames            Game[]               @relation("HomeTeam")
+  players              Player[]
+  playerSentiments     PlayerSentiment[]
+  transfersAsFrom      PlayerTransfer[]     @relation("FromTeam")
+  transfersAsTo        PlayerTransfer[]     @relation("ToTeam")
+  programRanking       ProgramRanking?
+  programTiers         ProgramTier[]
+  rivalriesAsTeamA     Rivalry[]            @relation("TeamA")
+  rivalriesAsTeamB     Rivalry[]            @relation("TeamB")
+  rivalryStatsAsLoser  RivalryStat[]        @relation("Loser")
+  rivalryStatsAsWinner RivalryStat[]        @relation("Winner")
+  conference           Conference?          @relation(fields: [conferenceId], references: [id])
+  level                Level                @relation(fields: [levelId], references: [id])
+  teamBadges           TeamBadge[]
+  teamBuzz             TeamBuzz[]
+  teamRankings         TeamRanking[]
+  rosterGrades         TeamRosterGrade[]
+  teamSentiments       TeamSentiment[]
+
+  @@index([levelId])
+  @@index([conferenceId])
+}
+
+model Season {
+  id                 Int                 @id @default(autoincrement())
+  sportId            Int
+  year               Int
+  isCurrent          Boolean             @default(false)
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  awardCandidates    AwardCandidate[]
+  chaosGames         ChaosGame[]
+  coachGrades        CoachGrade[]
+  games              Game[]
+  playerOutliers     PlayerOutlier[]
+  playerSentiments   PlayerSentiment[]
+  rankings           Ranking[]
+  rivalryStats       RivalryStat[]
+  sport              Sport               @relation(fields: [sportId], references: [id])
+  seasonSuperlatives SeasonSuperlative[]
+  teamAnomalies      TeamAnomaly[]
+  rosterGrades       TeamRosterGrade[]
+  teamSentiments     TeamSentiment[]
+  weeklyDigests      WeeklyDigest[]
+
+  @@unique([sportId, year])
+}
+
+model Game {
+  id                Int             @id @default(autoincrement())
+  seasonId          Int
+  homeTeamId        Int
+  awayTeamId        Int
+  week              Int?
+  gameDate          DateTime?
+  homeScore         Int?
+  awayScore         Int?
+  isNeutralSite     Boolean         @default(false)
+  isConferenceGame  Boolean?
+  isPostseason      Boolean         @default(false)
+  homeWinProb       Decimal?        @db.Decimal(5, 4)
+  excitementIndex   Decimal?        @db.Decimal(6, 3)
+  spread            Decimal?        @db.Decimal(5, 1)
+  overUnder         Decimal?        @db.Decimal(5, 1)
+  homeEpa           Decimal?        @db.Decimal(8, 3)
+  awayEpa           Decimal?        @db.Decimal(8, 3)
+  homeSuccessRate   Decimal?        @db.Decimal(5, 4)
+  awaySuccessRate   Decimal?        @db.Decimal(5, 4)
+  homeExplosiveness Decimal?        @db.Decimal(6, 3)
+  awayExplosiveness Decimal?        @db.Decimal(6, 3)
+  metadata          Json?           @default("{}")
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  chaosGame         ChaosGame?
+  coachDecisions    CoachDecision[]
+  awayTeam          Team            @relation("AwayTeam", fields: [awayTeamId], references: [id])
+  homeTeam          Team            @relation("HomeTeam", fields: [homeTeamId], references: [id])
+  season            Season          @relation(fields: [seasonId], references: [id])
+  rivalryStats      RivalryStat[]
+
+  @@index([seasonId, week])
+  @@index([homeTeamId])
+  @@index([awayTeamId])
+}
+
+model Ranking {
+  id               Int           @id @default(autoincrement())
+  seasonId         Int
+  sportId          Int
+  week             Int?
+  computedAt       DateTime      @default(now())
+  algorithmVersion String?       @default("3.0")
+  createdAt        DateTime      @default(now())
+  season           Season        @relation(fields: [seasonId], references: [id])
+  teamRankings     TeamRanking[]
+
+  @@unique([seasonId, week])
+}
+
+model TeamRanking {
+  id                 Int      @id @default(autoincrement())
+  rankingId          Int
+  teamId             Int
+  rank               Int?
+  rating             Decimal  @db.Decimal(8, 2)
+  previousRank       Int?
+  ratingChange       Decimal? @db.Decimal(6, 2)
+  offenseRating      Decimal? @db.Decimal(8, 2)
+  defenseRating      Decimal? @db.Decimal(8, 2)
+  sos                Decimal? @db.Decimal(8, 2)
+  recordWins         Int?
+  recordLosses       Int?
+  playoffProbability Decimal? @db.Decimal(5, 4)
+  createdAt          DateTime @default(now())
+  ranking            Ranking  @relation(fields: [rankingId], references: [id])
+  team               Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([rankingId, teamId])
+  @@index([rankingId, rank])
+}
+
+model ProgramRanking {
+  id                Int      @id @default(autoincrement())
+  teamId            Int      @unique
+  computedAt        DateTime @default(now())
+  overallRank       Int?
+  overallScore      Decimal? @db.Decimal(6, 3)
+  peakPerformance   Decimal? @db.Decimal(6, 3)
+  consistency       Decimal? @db.Decimal(6, 3)
+  postseasonSuccess Decimal? @db.Decimal(6, 3)
+  avgRating         Decimal? @db.Decimal(6, 3)
+  trendScore        Decimal? @db.Decimal(6, 3)
+  sosPremium        Decimal? @db.Decimal(6, 3)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  team              Team     @relation(fields: [teamId], references: [id])
+}
+
+model TeamSentiment {
+  id                 Int      @id @default(autoincrement())
+  teamId             Int
+  seasonId           Int
+  measuredAt         DateTime @default(now())
+  score              Decimal? @db.Decimal(5, 2)
+  trend              String?
+  buzzVolume         Int?
+  sourceBreakdown    Json?    @default("{}")
+  hotTopics          Json?    @default("[]")
+  coachApproval      Decimal? @db.Decimal(5, 2)
+  mediaFanDivergence Decimal? @db.Decimal(5, 2)
+  createdAt          DateTime @default(now())
+  blueskyScore       Decimal? @db.Decimal(5, 2)
+  newsScore          Decimal? @db.Decimal(5, 2)
+  redditScore        Decimal? @db.Decimal(5, 2)
+  samplePosts        Json?    @default("[]")
+  season             Season   @relation(fields: [seasonId], references: [id])
+  team               Team     @relation(fields: [teamId], references: [id])
+
+  @@index([teamId, measuredAt])
+}
+
+model PlayerSentiment {
+  id             Int      @id @default(autoincrement())
+  teamId         Int
+  seasonId       Int
+  playerName     String
+  position       String?
+  measuredAt     DateTime @default(now())
+  mentionCount   Int?
+  sentimentScore Decimal? @db.Decimal(5, 2)
+  buzzZscore     Decimal? @db.Decimal(5, 2)
+  buzzStatus     String?
+  createdAt      DateTime @default(now())
+  season         Season   @relation(fields: [seasonId], references: [id])
+  team           Team     @relation(fields: [teamId], references: [id])
+
+  @@index([teamId, measuredAt])
+}
+
+model ChaosGame {
+  id                  Int      @id @default(autoincrement())
+  gameId              Int      @unique
+  seasonId            Int
+  chaosScore          Decimal? @db.Decimal(6, 2)
+  spreadBustFactor    Decimal? @db.Decimal(6, 2)
+  winProbVolatility   Decimal? @db.Decimal(6, 2)
+  upsetMagnitude      Decimal? @db.Decimal(6, 2)
+  excitementIndex     Decimal? @db.Decimal(6, 2)
+  contextWeight       Decimal? @db.Decimal(6, 2)
+  postgameWpInversion Decimal? @db.Decimal(6, 2)
+  winnerLowestWp      Decimal? @db.Decimal(5, 4)
+  wpCrosses50         Int?
+  tags                String[] @default([])
+  headline            String?
+  narrative           String?
+  computedAt          DateTime @default(now())
+  game                Game     @relation(fields: [gameId], references: [id])
+  season              Season   @relation(fields: [seasonId], references: [id])
+
+  @@index([seasonId, chaosScore(sort: Desc)])
+}
+
+model SeasonSuperlative {
+  id         Int      @id @default(autoincrement())
+  seasonId   Int
+  category   String
+  teamId     Int?
+  statValue  String?
+  statDetail String?
+  computedAt DateTime @default(now())
+  season     Season   @relation(fields: [seasonId], references: [id])
+
+  @@index([seasonId, category])
+}
+
+model PlayerOutlier {
+  id         Int      @id @default(autoincrement())
+  seasonId   Int
+  playerName String
+  teamId     Int?
+  position   String?
+  category   String
+  statLabel  String?
+  statValue  Decimal? @db.Decimal(10, 3)
+  zscore     Decimal? @db.Decimal(5, 2)
+  percentile Decimal? @db.Decimal(5, 2)
+  detail     String?
+  computedAt DateTime @default(now())
+  season     Season   @relation(fields: [seasonId], references: [id])
+
+  @@index([seasonId, category, zscore(sort: Desc)])
+}
+
+model TeamAnomaly {
+  id                Int      @id @default(autoincrement())
+  seasonId          Int
+  teamId            Int?
+  category          String
+  label             String?
+  description       String?
+  offensePercentile Decimal? @db.Decimal(5, 2)
+  defensePercentile Decimal? @db.Decimal(5, 2)
+  epaPerPlay        Decimal? @db.Decimal(6, 3)
+  expectedWins      Decimal? @db.Decimal(4, 1)
+  actualWins        Int?
+  luckIndex         Decimal? @db.Decimal(5, 2)
+  metadata          Json?    @default("{}")
+  computedAt        DateTime @default(now())
+  season            Season   @relation(fields: [seasonId], references: [id])
+
+  @@index([seasonId, category])
+}
+
+model CoachDecision {
+  id              Int      @id @default(autoincrement())
+  gameId          Int
+  teamId          Int
+  coachName       String?
+  decisionType    String
+  situation       Json?    @default("{}")
+  decisionMade    String?
+  optimalDecision String?
+  wasCorrect      Boolean?
+  wpGained        Decimal? @db.Decimal(6, 4)
+  wpOptimal       Decimal? @db.Decimal(6, 4)
+  outcome         String?
+  createdAt       DateTime @default(now())
+  game            Game     @relation(fields: [gameId], references: [id])
+  team            Team     @relation(fields: [teamId], references: [id])
+
+  @@index([gameId, teamId])
+}
+
+model CoachGrade {
+  id                   Int      @id @default(autoincrement())
+  seasonId             Int
+  teamId               Int
+  coachName            String?
+  overallGrade         Decimal? @db.Decimal(5, 2)
+  fourthDownGrade      Decimal? @db.Decimal(5, 2)
+  fourthDownAggression Decimal? @db.Decimal(5, 4)
+  fourthDownAccuracy   Decimal? @db.Decimal(5, 4)
+  twoPtGrade           Decimal? @db.Decimal(5, 2)
+  timeoutGrade         Decimal? @db.Decimal(5, 2)
+  clockManagementGrade Decimal? @db.Decimal(5, 2)
+  totalWpGained        Decimal? @db.Decimal(6, 3)
+  totalWpLost          Decimal? @db.Decimal(6, 3)
+  netWp                Decimal? @db.Decimal(6, 3)
+  decisionsCount       Int?
+  computedAt           DateTime @default(now())
+  season               Season   @relation(fields: [seasonId], references: [id])
+  team                 Team     @relation(fields: [teamId], references: [id])
+
+  @@index([seasonId, overallGrade(sort: Desc)])
+}
+
+model Player {
+  id                   Int              @id @default(autoincrement())
+  cfbdId               Int?             @unique
+  name                 String
+  position             String?
+  currentTeamId        Int?
+  heightInches         Int?
+  weightLbs            Int?
+  class                String?
+  eligibilityRemaining Int?
+  hometown             String?
+  homeState            String?
+  highSchool           String?
+  recruitRating        Decimal?         @db.Decimal(6, 4)
+  recruitStars         Int?
+  recruitComposite     Decimal?         @db.Decimal(6, 4)
+  recruitNationalRank  Int?
+  recruitPositionRank  Int?
+  recruitStateRank     Int?
+  recruitClassYear     Int?
+  careerEpa            Decimal?         @db.Decimal(8, 3)
+  careerSnaps          Int?
+  careerGames          Int?
+  draftProjection      String?
+  metadata             Json?            @default("{}")
+  createdAt            DateTime         @default(now())
+  updatedAt            DateTime         @updatedAt
+  awardCandidates      AwardCandidate[]
+  currentTeam          Team?            @relation(fields: [currentTeamId], references: [id])
+  transfersAsPlayer    PlayerTransfer[] @relation("Player")
+
+  @@index([currentTeamId])
+  @@index([recruitStars(sort: Desc), recruitNationalRank])
+}
+
+model PlayerTransfer {
+  id                Int      @id @default(autoincrement())
+  playerId          Int?
+  fromTeamId        Int?
+  toTeamId          Int?
+  transferYear      Int?
+  transferWindow    String?
+  previousEpa       Decimal? @db.Decimal(8, 3)
+  previousSnaps     Int?
+  postTransferEpa   Decimal? @db.Decimal(8, 3)
+  postTransferSnaps Int?
+  epaDelta          Decimal? @db.Decimal(8, 3)
+  impactRating      Decimal? @db.Decimal(6, 2)
+  status            String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  fromTeam          Team?    @relation("FromTeam", fields: [fromTeamId], references: [id])
+  player            Player?  @relation("Player", fields: [playerId], references: [id])
+  toTeam            Team?    @relation("ToTeam", fields: [toTeamId], references: [id])
+
+  @@index([transferYear, toTeamId])
+}
+
+model TeamRosterGrade {
+  id                       Int      @id @default(autoincrement())
+  teamId                   Int
+  seasonId                 Int
+  overallTalentScore       Decimal? @db.Decimal(8, 2)
+  talentNationalRank       Int?
+  hsRecruitTalent          Decimal? @db.Decimal(8, 2)
+  portalAcquiredTalent     Decimal? @db.Decimal(8, 2)
+  homegrownDevScore        Decimal? @db.Decimal(8, 2)
+  portalAdditions          Int?
+  portalLosses             Int?
+  portalNetEpa             Decimal? @db.Decimal(8, 3)
+  portalRoi                Decimal? @db.Decimal(6, 2)
+  avgRecruitRating         Decimal? @db.Decimal(6, 4)
+  fiveStars                Int?
+  fourStars                Int?
+  threeStars               Int?
+  twoStars                 Int?
+  blueChipRatio            Decimal? @db.Decimal(5, 4)
+  recruitingClassRank      Int?
+  compositeClassScore      Decimal? @db.Decimal(8, 2)
+  developmentGrade         Decimal? @db.Decimal(5, 2)
+  starsToStartersRate      Decimal? @db.Decimal(5, 4)
+  lowStarOverperformers    Int?
+  talentVsPerformanceDelta Decimal? @db.Decimal(6, 2)
+  computedAt               DateTime @default(now())
+  season                   Season   @relation(fields: [seasonId], references: [id])
+  team                     Team     @relation(fields: [teamId], references: [id])
+
+  @@index([seasonId, talentNationalRank])
+}
+
+model Rivalry {
+  id               Int           @id @default(autoincrement())
+  teamAId          Int
+  teamBId          Int
+  name             String?
+  trophyName       String?
+  significanceTier Int           @default(2)
+  metadata         Json?         @default("{}")
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+  teamA            Team          @relation("TeamA", fields: [teamAId], references: [id])
+  teamB            Team          @relation("TeamB", fields: [teamBId], references: [id])
+  rivalryStats     RivalryStat[]
+
+  @@unique([teamAId, teamBId])
+}
+
+model RivalryStat {
+  id                    Int      @id @default(autoincrement())
+  rivalryId             Int
+  seasonId              Int
+  gameId                Int?
+  winnerTeamId          Int?
+  loserTeamId           Int?
+  margin                Int?
+  wasUpset              Boolean?
+  chaosScore            Decimal? @db.Decimal(6, 2)
+  sentimentDifferential Decimal? @db.Decimal(6, 2)
+  createdAt             DateTime @default(now())
+  game                  Game?    @relation(fields: [gameId], references: [id])
+  loser                 Team?    @relation("Loser", fields: [loserTeamId], references: [id])
+  rivalry               Rivalry  @relation(fields: [rivalryId], references: [id])
+  season                Season   @relation(fields: [seasonId], references: [id])
+  winner                Team?    @relation("Winner", fields: [winnerTeamId], references: [id])
+}
+
+model AwardCandidate {
+  id                  Int      @id @default(autoincrement())
+  seasonId            Int
+  awardName           String
+  playerId            Int?
+  teamId              Int?
+  probability         Decimal? @db.Decimal(5, 4)
+  previousProbability Decimal? @db.Decimal(5, 4)
+  rank                Int?
+  totalEpa            Decimal? @db.Decimal(8, 3)
+  teamSuccessFactor   Decimal? @db.Decimal(5, 2)
+  narrativeScore      Decimal? @db.Decimal(5, 2)
+  statisticalScore    Decimal? @db.Decimal(5, 2)
+  historicalComp      String?
+  computedAt          DateTime @default(now())
+  player              Player?  @relation(fields: [playerId], references: [id])
+  season              Season   @relation(fields: [seasonId], references: [id])
+  team                Team?    @relation(fields: [teamId], references: [id])
+
+  @@index([seasonId, awardName, rank])
+}
+
+model WeeklyDigest {
+  id                  Int      @id @default(autoincrement())
+  seasonId            Int
+  week                Int?
+  publishedAt         DateTime @default(now())
+  topMovers           Json?    @default("{}")
+  gameOfWeek          Json?    @default("{}")
+  chaosHighlights     Json?    @default("{}")
+  predictionAccuracy  Json?    @default("{}")
+  sentimentShifts     Json?    @default("{}")
+  outlierPerformances Json?    @default("{}")
+  coachingHighlights  Json?    @default("{}")
+  awardRaceUpdates    Json?    @default("{}")
+  gauntletUpdate      Json?    @default("{}")
+  renderedHtml        String?
+  renderedMarkdown    String?
+  createdAt           DateTime @default(now())
+  season              Season   @relation(fields: [seasonId], references: [id])
+}
+
+model ProgramTier {
+  id                   Int      @id @default(autoincrement())
+  teamId               Int
+  season               Int
+  week                 Int?
+  gridlegacyScore      Decimal  @db.Decimal(5, 2)
+  sustainedPerformance Decimal  @db.Decimal(5, 2)
+  peakAchievement      Decimal  @db.Decimal(5, 2)
+  postseasonPedigree   Decimal  @db.Decimal(5, 2)
+  winEquity            Decimal  @db.Decimal(5, 2)
+  stabilityTrajectory  Decimal  @db.Decimal(5, 2)
+  recruitingCapital    Decimal  @db.Decimal(5, 2)
+  tierNumber           Int
+  tierName             String
+  division             String
+  tierChange           Int      @default(0)
+  promotionZone        Boolean  @default(false)
+  relegationZone       Boolean  @default(false)
+  relegationWatch      Boolean  @default(false)
+  rankInTier           Int?
+  rankOverall          Int?
+  computedAt           DateTime @default(now())
+  team                 Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, season, week])
+  @@index([season, division])
+  @@index([teamId, season])
+  @@index([tierNumber, season, division])
+}
+
+model TierAlert {
+  id              Int      @id @default(autoincrement())
+  teamId          Int
+  season          Int
+  week            Int?
+  alertType       String
+  fromTier        Int
+  toTier          Int
+  fromTierName    String
+  toTierName      String
+  headline        String
+  context         String?
+  gridlegacyScore Decimal  @db.Decimal(5, 2)
+  createdAt       DateTime @default(now())
+
+  @@index([season])
+  @@index([teamId])
+}
+
+model DivisionTransition {
+  id                   Int      @id @default(autoincrement())
+  teamId               Int
+  transitionSeason     Int
+  fromDivision         String
+  toDivision           String
+  fromTierNumber       Int
+  fromTierName         String
+  fromGridlegacyScore  Decimal  @db.Decimal(5, 2)
+  entryTierNumber      Int
+  entryTierName        String
+  entryGridlegacyScore Decimal  @db.Decimal(5, 2)
+  proveItExpiresSeason Int
+  bridgeFactor         Decimal  @db.Decimal(4, 3)
+  createdAt            DateTime @default(now())
+  team                 Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, transitionSeason])
+  @@index([teamId])
+  @@index([transitionSeason])
+}
+
+model TeamBadge {
+  id          Int       @id @default(autoincrement())
+  teamId      Int
+  season      Int
+  week        Int?
+  badgeId     String
+  badgeName   String
+  category    String
+  borderTier  String
+  isPermanent Boolean   @default(false)
+  isLive      Boolean   @default(false)
+  icon        String
+  tooltip     String
+  detailJson  Json?     @default("{}")
+  earnedAt    DateTime  @default(now())
+  expiresAt   DateTime?
+  team        Team      @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, season, week, badgeId])
+  @@index([teamId, season])
+  @@index([badgeId, season])
+  @@index([category, season])
+}
+
+model SentimentRaw {
+  id             Int       @id @default(autoincrement())
+  source         String
+  sourceId       String?   @db.VarChar(200)
+  sourceUrl      String?
+  author         String?   @db.VarChar(100)
+  text           String
+  publishedAt    DateTime
+  ingestedAt     DateTime  @default(now())
+  processed      Boolean   @default(false)
+  vaderCompound  Decimal?  @db.Decimal(4, 3)
+  bertLabel      String?   @db.VarChar(10)
+  bertConfidence Decimal?  @db.Decimal(4, 3)
+  finalSentiment String?   @db.VarChar(10)
+  finalScore     Decimal?  @db.Decimal(4, 3)
+  modelUsed      String?   @db.VarChar(20)
+  teamIds        Int[]
+  playerIds      Int[]
+  topicKeywords  String[]
+  processedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  @@index([processed])
+  @@index([source, publishedAt])
+}
+
+model TeamBuzz {
+  id             Int      @id @default(autoincrement())
+  teamId         Int
+  weekStart      DateTime @db.Date
+  searchInterest Int
+  interestChange Decimal? @db.Decimal(5, 2)
+  buzzRank       Int?
+  buzzStatus     String?  @db.VarChar(20)
+  computedAt     DateTime @default(now())
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  team           Team     @relation(fields: [teamId], references: [id])
+
+  @@unique([teamId, weekStart])
+  @@index([teamId])
+  @@index([weekStart])
+}
+
+model CoachApproval {
+  id            Int      @id @default(autoincrement())
+  teamId        Int
+  coachName     String   @db.VarChar(100)
+  season        Int
+  measuredAt    DateTime
+  approvalScore Decimal  @db.Decimal(5, 2)
+  approvalTrend String?  @db.VarChar(20)
+  mentionCount  Int      @default(0)
+  computedAt    DateTime @default(now())
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  team          Team     @relation(fields: [teamId], references: [id])
+
+  @@index([teamId])
+  @@index([season])
+  @@index([measuredAt])
+}
+
+model SentimentStory {
+  id              Int      @id @default(autoincrement())
+  season          Int
+  week            Int
+  teamId          Int?
+  storyType       String
+  headline        String
+  body            String?
+  sentimentBefore Decimal? @db.Decimal(5, 2)
+  sentimentAfter  Decimal? @db.Decimal(5, 2)
+  computedAt      DateTime @default(now())
+  createdAt       DateTime @default(now())
+
+  @@index([season])
+  @@index([season, week])
+  @@index([storyType])
+}

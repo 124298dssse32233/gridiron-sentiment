@@ -1,0 +1,51 @@
+<svg viewBox="0 0 128 128" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="128" height="128" rx="24" fill="#0a0e17"/>
+
+  <!-- Subtle grid pattern (football field) -->
+  <defs>
+    <pattern id="fieldGrid" width="16" height="16" patternUnits="userSpaceOnUse">
+      <path d="M 16 0 L 0 0 0 16" fill="none" stroke="#00f5d4" stroke-width="0.5" opacity="0.1"/>
+    </pattern>
+
+    <!-- Glow filter for the G -->
+    <filter id="glowG">
+      <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <!-- Gradient for the G -->
+    <linearGradient id="gGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#00f5d4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#00e5c0;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+
+  <!-- Grid pattern overlay -->
+  <rect width="128" height="128" rx="24" fill="url(#fieldGrid)"/>
+
+  <!-- Yard line markers (vertical) -->
+  <line x1="32" y1="20" x2="32" y2="108" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+  <line x1="64" y1="20" x2="64" y2="108" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+  <line x1="96" y1="20" x2="96" y2="108" stroke="#00f5d4" stroke-width="0.75" opacity="0.08"/>
+
+  <!-- Main "G" shape -->
+  <g filter="url(#glowG)">
+    <!-- Stylized G -->
+    <path d="M 95 30 C 110 30 120 40 120 55 L 120 75 C 120 90 110 100 95 100 C 80 100 70 90 70 75 L 70 65 L 85 65 L 85 75 C 85 82 90 87 95 87 C 100 87 105 82 105 75 L 105 55 C 105 48 100 43 95 43 C 88 43 83 48 83 55 L 83 65 L 70 65 L 70 55 C 70 40 80 30 95 30 Z"
+          fill="url(#gGradient)" stroke="#00f5d4" stroke-width="1.5"/>
+  </g>
+
+  <!-- Football laces accent (subtle detail in top-right of G) -->
+  <g opacity="0.6">
+    <circle cx="108" cy="48" r="2.5" fill="#00f5d4"/>
+    <circle cx="114" cy="52" r="2.5" fill="#00f5d4"/>
+    <circle cx="112" cy="58" r="2" fill="#00f5d4"/>
+  </g>
+
+  <!-- Top accent line -->
+  <line x1="0" y1="0" x2="128" y2="0" stroke="#00f5d4" stroke-width="2" opacity="0.3" rx="24"/>
+</svg>
